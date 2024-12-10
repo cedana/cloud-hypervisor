@@ -105,6 +105,16 @@ impl VhostUserHandle {
             .map_err(Error::VhostUserAddMemReg)
     }
 
+    pub fn get_protocol_features(
+        &mut self,
+    ) -> Result<u64> {
+        let backend_protocol_features = self
+            .vu
+            .get_protocol_features()
+            .map_err(Error::VhostUserGetProtocolFeatures)?;
+        Ok(backend_protocol_features.bits())
+    }
+
     pub fn negotiate_features_vhost_user(
         &mut self,
         avail_features: u64,

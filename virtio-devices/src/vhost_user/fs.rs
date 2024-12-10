@@ -111,6 +111,8 @@ impl Fs {
         ) = if let Some(state) = state {
             info!("Restoring vhost-user-fs {}", id);
 
+            let _ = vu.get_protocol_features();
+
             vu.set_protocol_features_vhost_user(
                 state.acked_features,
                 state.acked_protocol_features,

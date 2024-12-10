@@ -28,6 +28,11 @@ debug = true
 inherits = "release"
 strip = false
 
+[profile.dev]
+debug = 2
+opt-level = 0
+strip = false
+
 [dependencies]
 anyhow = "1.0.94"
 api_client = { path = "api_client" }

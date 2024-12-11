@@ -311,7 +311,6 @@ impl VhostUserHandle {
         acked_features: u64,
         acked_protocol_features: u64,
     ) -> Result<()> {
-        self.vu.set_owner().map_err(Error::VhostUserSetOwner)?;
         self.vu
             .get_features()
             .map_err(Error::VhostUserGetFeatures)?;

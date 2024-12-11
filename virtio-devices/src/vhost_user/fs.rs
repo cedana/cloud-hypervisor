@@ -111,7 +111,16 @@ impl Fs {
         ) = if let Some(state) = state {
             info!("Restoring vhost-user-fs {}", id);
 
-            let _ = vu.get_protocol_features();
+            let avail_features = DEFAULT_VIRTIO_FEATURES;
+
+            let avail_protocol_features = VhostUserProtocolFeatures::MQ
+                | VhostUserProtocolFeatures::CONFIGURE_MEM_SLOTS
+                | VhostUserProtocolFeatures::REPLY_ACK
+                | VhostUserProtocolFeatures::INFLIGHT_SHMFD
+                | VhostUserProtocolFeatures::LOG_SHMFD;
+
+            let (_, _) =
+                vu.negotiate_features_vhost_user(avail_features, avail_protocol_features)?;
 
             vu.set_protocol_features_vhost_user(
                 state.acked_features,

@@ -107,11 +107,26 @@ impl VhostUserHandle {
 
     pub fn get_protocol_features(
         &mut self,
+        avail_features: u64,
+        avail_protocol_features: VhostUserProtocolFeatures,
     ) -> Result<u64> {
+        self.vu.set_owner().map_err(Error::VhostUserSetOwner)?;
+
+        let backend_features = self
+            .vu
+            .get_features()
+            .map_err(Error::VhostUserGetFeatures)?;
+        let acked_features = avail_features & backend_features;
+
+        let acked_protocol_features =
+            if acked_features & VhostUserVirtioFeatures::PROTOCOL_FEATURES.bits() != 0 {
+
         let backend_protocol_features = self
             .vu
             .get_protocol_features()
             .map_err(Error::VhostUserGetProtocolFeatures)?;
+        };
+
         Ok(backend_protocol_features.bits())
     }
 

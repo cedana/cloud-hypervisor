@@ -436,9 +436,16 @@ impl VhostUserHandle {
         Ok(())
     }
 
+    pub fn set_device_state_fd(&mut self, fd: &AsRawFd) -> Result<()> {
+        self.vu
+            .set_device_state_fd(fd)
+            .map_err(Error::VhostUserSetDeviceStateFd)
+    }
+
     fn update_supports_migration(&mut self, acked_features: u64, acked_protocol_features: u64) {
         if (acked_features & u64::from(vhost::vhost_kern::vhost_binding::VHOST_F_LOG_ALL) != 0)
             && (acked_protocol_features & VhostUserProtocolFeatures::LOG_SHMFD.bits() != 0)
+            && (acked_protocol_features & VhostUserProtocolFeatures::DEVICE_STATE.bits() != 0)
         {
             self.supports_migration = true;
         }

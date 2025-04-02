@@ -2597,6 +2597,11 @@ impl Snapshottable for Vm {
             (device_manager.id(), device_manager.snapshot()?)
         };
         vm_snapshot.add_snapshot(id, snapshot);
+        // let (id, snapshot) = {
+        //     let mut device_manager = self.device_manager.lock().unwrap();
+        //     (device_manager.id(), device_manager.snapshot()?)
+        // };
+        // vm_snapshot.add_snapshot(id, snapshot);
 
         event!("vm", "snapshotted");
         Ok(vm_snapshot)

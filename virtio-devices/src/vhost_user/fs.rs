@@ -117,7 +117,8 @@ impl Fs {
                 | VhostUserProtocolFeatures::CONFIGURE_MEM_SLOTS
                 | VhostUserProtocolFeatures::REPLY_ACK
                 | VhostUserProtocolFeatures::INFLIGHT_SHMFD
-                | VhostUserProtocolFeatures::LOG_SHMFD;
+                | VhostUserProtocolFeatures::LOG_SHMFD
+                | VhostUserProtocolFeatures::DEVICE_STATE;
 
             let (_, _) =
                 vu.negotiate_features_vhost_user(avail_features, avail_protocol_features)?;
@@ -227,6 +228,15 @@ impl Fs {
             acked_protocol_features: self.vu_common.acked_protocol_features,
             vu_num_queues: self.vu_common.vu_num_queues,
             backend_req_support: false,
+        }
+    }
+
+    fn snapshot_backend(&self, fd: &impl AsRawFd) -> Result<()> {
+        if let Some(vu) = &self.vu_common.vu {
+            let mut vu_handle = vu.lock().map_err(|_| Error::VhostUserSetDeviceStateFd)?;
+            vu_handle.set_device_state_fd(fd)
+        } else {
+            Err(Error::VhostUserSetDeviceStateFd)
         }
     }
 }
@@ -403,7 +413,30 @@ impl Snapshottable for Fs {
     }
 
     fn snapshot(&mut self) -> std::result::Result<Snapshot, MigratableError> {
-        self.vu_common.snapshot(&self.state())
+        let mut snapshot = self.vu_common.snapshot(&self.state())?;
+
+        let socket_path = format!("/tmp/{}.sock", self.id); 
+        let listener = UnixListener::bind(&socket_path).map_err(|e| {
+            MigratableError::Snapshot(format!("Failed to create Unix socket: {:?}", e))
+        })?;
+
+        self.snapshot_backend(&socket_path)?;
+
+        let (mut stream, _) = listener.accept().map_err(|e| {
+            MigratableError::Snapshot(format!("Failed to accept Unix socket connection: {:?}", e))
+        })?;
+
+        let mut buffer = String::new();
+        stream.read_to_string(&mut buffer).map_err(|e| {
+            MigratableError::Snapshot(format!("Failed to read from Unix socket: {:?}", e))
+        })?;
+
+        drop(listener);
+        std::fs::remove_file(&socket_path).ok();
+
+        snapshot.snapshot_data = Some(SnapshotData { state: buffer });
+
+        Ok(snapshot)
     }
 }
 impl Transportable for Fs {}

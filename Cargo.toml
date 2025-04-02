@@ -117,7 +117,7 @@ seccompiler = "0.4.0"
 vfio-bindings = { git = "https://github.com/rust-vmm/vfio", branch = "main" }
 vfio-ioctls = { git = "https://github.com/rust-vmm/vfio", branch = "main", default-features = false }
 vfio_user = { git = "https://github.com/rust-vmm/vfio-user", branch = "main" }
-vhost = { git = "https://github.com/rust-vmm/vhost", rev = "d983ae0" }
+vhost = { git = "https://github.com/cedana/vhost", rev = "11ae25e" }
 vhost-user-backend = { git = "https://github.com/rust-vmm/vhost", rev = "d983ae0" }
 virtio-bindings = "0.2.4"
 virtio-queue = "0.14.0"

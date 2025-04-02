@@ -13,8 +13,11 @@ use vhost::vhost_user::{FrontendReqHandler, VhostUserFrontend, VhostUserFrontend
 use virtio_queue::Queue;
 use vm_memory::{ByteValued, GuestMemoryAtomic};
 use vm_migration::protocol::MemoryRangeTable;
-use vm_migration::{Migratable, MigratableError, Pausable, Snapshot, Snapshottable, Transportable};
+use vm_migration::{Migratable, MigratableError, Pausable, Snapshot, Snapshottable, Transportable, SnapshotData};
 use vmm_sys_util::eventfd::EventFd;
+use std::os::unix::io::AsRawFd;
+use std::os::unix::net::UnixListener;
+
 
 use super::vu_common_ctrl::VhostUserHandle;
 use super::{Error, Result, DEFAULT_VIRTIO_FEATURES};

@@ -71,7 +71,7 @@ pub trait Pausable {
 /// allows for easier and forward compatible extensions.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct SnapshotData {
-    state: String,
+    pub state: String,
 }
 
 impl SnapshotData {

@@ -436,11 +436,13 @@ impl VhostUserHandle {
         Ok(())
     }
 
-    pub fn set_device_state_fd(&mut self, fd: &AsRawFd) -> Result<()> {
+    pub fn set_device_state_fd(&mut self, fd: &dyn AsRawFd) -> Result<()> {
         self.vu
             .set_device_state_fd(fd)
-            .map_err(Error::VhostUserSetDeviceStateFd)
+            // TODO fix error handling
+            .map_err(|e| Error::BadQueueNum)
     }
+
 
     fn update_supports_migration(&mut self, acked_features: u64, acked_protocol_features: u64) {
         if (acked_features & u64::from(vhost::vhost_kern::vhost_binding::VHOST_F_LOG_ALL) != 0)

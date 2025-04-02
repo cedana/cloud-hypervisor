@@ -4,6 +4,8 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Barrier, Mutex};
 use std::{result, thread};
+use std::io::Read;
+
 
 use seccompiler::SeccompAction;
 use serde::{Deserialize, Serialize};
@@ -18,9 +20,9 @@ use vmm_sys_util::eventfd::EventFd;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixListener;
 
-
 use super::vu_common_ctrl::VhostUserHandle;
-use super::{Error, Result, DEFAULT_VIRTIO_FEATURES};
+use super::{Result, DEFAULT_VIRTIO_FEATURES};
+use crate::vhost_user;
 use crate::seccomp_filters::Thread;
 use crate::thread_helper::spawn_virtio_thread;
 use crate::vhost_user::VhostUserCommon;
@@ -156,7 +158,7 @@ impl Fs {
                 if acked_protocol_features & VhostUserProtocolFeatures::MQ.bits() != 0 {
                     vu.socket_handle()
                         .get_queue_num()
-                        .map_err(Error::VhostUserGetQueueMaxNum)? as usize
+                        .map_err(|_| vhost_user::Error::BadQueueNum)? as usize
                 } else {
                     DEFAULT_QUEUE_NUMBER
                 };
@@ -166,7 +168,7 @@ impl Fs {
                 "vhost-user-fs requested too many queues ({}) since the backend only supports {}\n",
                 num_queues, backend_num_queues
             );
-                return Err(Error::BadQueueNum);
+                return Err(vhost_user::Error::BadQueueNum);
             }
 
             // Create virtio-fs device configuration.
@@ -235,11 +237,12 @@ impl Fs {
     }
 
     fn snapshot_backend(&self, fd: &impl AsRawFd) -> Result<()> {
+        // TODO fix error handling
         if let Some(vu) = &self.vu_common.vu {
-            let mut vu_handle = vu.lock().map_err(|_| Error::VhostUserSetDeviceStateFd)?;
-            vu_handle.set_device_state_fd(fd)
+            let mut vu_handle = vu.lock().map_err(|_| vhost_user::Error::BadQueueNum)?;
+            vu_handle.set_device_state_fd(fd).map_err(|_| vhost_user::Error::BadQueueNum)
         } else {
-            Err(Error::VhostUserSetDeviceStateFd)
+            Err(vhost_user::Error::BadQueueNum)
         }
     }
 }
@@ -417,28 +420,31 @@ impl Snapshottable for Fs {
 
     fn snapshot(&mut self) -> std::result::Result<Snapshot, MigratableError> {
         let mut snapshot = self.vu_common.snapshot(&self.state())?;
-
-        let socket_path = format!("/tmp/{}.sock", self.id); 
+     
+        let socket_path = format!("/tmp/{}.sock", self.id);
+     
         let listener = UnixListener::bind(&socket_path).map_err(|e| {
-            MigratableError::Snapshot(format!("Failed to create Unix socket: {:?}", e))
+            MigratableError::Snapshot(anyhow::Error::new(e).context("Failed to bind UnixListener").into())
         })?;
-
-        self.snapshot_backend(&socket_path)?;
-
+     
+        self.snapshot_backend(&listener).map_err(|e| {
+            MigratableError::Snapshot(anyhow::Error::new(e).context("Failed to set up snapshot backend").into())
+        })?;
+     
         let (mut stream, _) = listener.accept().map_err(|e| {
-            MigratableError::Snapshot(format!("Failed to accept Unix socket connection: {:?}", e))
+            MigratableError::Snapshot(anyhow::Error::new(e).context("Failed to accept connection on listener").into())
         })?;
-
+     
         let mut buffer = String::new();
         stream.read_to_string(&mut buffer).map_err(|e| {
-            MigratableError::Snapshot(format!("Failed to read from Unix socket: {:?}", e))
+            MigratableError::Snapshot(anyhow::Error::new(e).context("Failed to read from stream").into())
         })?;
-
+     
         drop(listener);
         std::fs::remove_file(&socket_path).ok();
-
+     
         snapshot.snapshot_data = Some(SnapshotData { state: buffer });
-
+     
         Ok(snapshot)
     }
 }

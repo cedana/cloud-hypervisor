@@ -437,10 +437,13 @@ impl VhostUserHandle {
     }
 
     pub fn set_device_state_fd(&mut self, fd: &dyn AsRawFd) -> Result<()> {
-        self.vu
-            .set_device_state_fd(fd)
-            // TODO fix error handling
-            .map_err(|e| Error::BadQueueNum)
+        match self.vu.set_device_state_fd(fd) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprintln!("set_device_state_fd failed: {:?}", e);
+                Err(Error::BadQueueNum)
+            }
+        }
     }
 
 
